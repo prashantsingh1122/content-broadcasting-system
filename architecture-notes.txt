@@ -1,0 +1,195 @@
+================================================
+CONTENT BROADCASTING SYSTEM - ARCHITECTURE NOTES
+================================================
+
+1. AUTHENTICATION & RBAC FLOW
+------------------------------
+- JWT-based authentication using jsonwebtoken library
+- Passwords hashed using bcrypt (10 salt rounds) before storing in DB
+- On login, server verifies password hash and returns signed JWT token
+- JWT payload contains: id, email, role
+- Token expiry: 24 hours
+
+Middleware flow for protected routes:
+  Request → authenticate middleware (verifies JWT) → authorize middleware (checks role) → controller
+
+Two roles:
+  - teacher: can upload content, view own content
+  - principal: can view all content, approve/reject content
+
+RBAC is strictly enforced:
+  - Teachers cannot access approval routes
+  - Principal cannot upload content
+  - Public broadcast route requires no authentication
+
+2. SUBJECT-BASED SYSTEM DESIGN
+--------------------------------
+- Each content item belongs to a subject (maths, science, english, history)
+- Broadcasting groups content by subject per teacher
+- Each subject has its own independent rotation cycle
+- Students see active content per subject for a given teacher
+
+3. UPLOAD HANDLING APPROACH
+-----------------------------
+- Multer middleware handles multipart/form-data
+- Files are streamed directly to AWS S3 (no local disk storage)
+- multer-s3 integration handles S3 upload transparently
+- File validation:
+    Allowed types: JPG, PNG, GIF (checked via mimetype)
+    Max size: 10MB (enforced by multer limits)
+- S3 bucket: content-broadcast-2026 (ap-south-1 region)
+- Public read access via bucket policy (no ACL)
+- File key format: uploads/{timestamp}-{random}.{ext}
+- file_url (public S3 URL) and file_path (S3 key) stored in DB
+
+4. APPROVAL WORKFLOW DESIGN
+-----------------------------
+Content lifecycle:
+  uploaded → pending → approved / rejected
+
+- Teacher uploads content → status set to 'pending' automatically
+- Principal views all pending content via GET /api/approval/pending
+- Principal approves → status = 'approved', approved_by and approved_at recorded
+- Principal rejects → status = 'rejected', rejection_reason stored
+- Only approved content is eligible for broadcasting
+- Rejected content stores reason visible to teacher via GET /api/content/my-content
+
+5. SCHEDULING & ROTATION LOGIC (MOST IMPORTANT)
+-------------------------------------------------
+Teacher controls visibility window:
+  - start_time: when content becomes eligible
+  - end_time: when content stops being eligible
+  - rotation_duration: how many minutes this content shows per cycle (default 5)
+
+Without start_time/end_time → content is NOT active (returns "No content available")
+Outside time window → content is NOT shown
+Only within time window + approved → eligible for rotation
+
+Rotation algorithm (per subject):
+  Step 1: Fetch all approved content for teacher within current time window
+  Step 2: Group content by subject
+  Step 3: For each subject:
+          - Calculate total cycle duration = sum of all rotation_duration values
+          - Find cycle anchor = earliest start_time among content items
+          - Calculate elapsed = (now - cycleAnchor) % totalCycle
+          - Walk through content items until elapsed falls within a slot
+          - Return that content item as currently active
+  Step 4: Return one active content per subject
+
+Example (Maths subject, 3 content items):
+  Content A: 5 mins → active at 0:00 - 4:59
+  Content B: 5 mins → active at 5:00 - 9:59
+  Content C: 5 mins → active at 10:00 - 14:59
+  Loop repeats every 15 minutes continuously
+
+6. DATABASE DESIGN DECISIONS
+------------------------------
+Database: PostgreSQL via Supabase (Session Pooler port 6543)
+ORM: Sequelize
+
+Tables:
+  Users:
+    - id (UUID, primary key)
+    - name, email (unique), password_hash
+    - role (enum: principal, teacher)
+    - created_at
+
+  Contents:
+    - id (UUID, primary key)
+    - title, description, subject
+    - file_url, file_path, file_type, file_size
+    - status (enum: pending, approved, rejected)
+    - rejection_reason (nullable)
+    - start_time, end_time (nullable - teacher controlled)
+    - rotation_duration (default: 5 minutes)
+    - uploaded_by (FK → Users.id)
+    - approved_by (FK → Users.id, nullable)
+    - approved_at (nullable)
+    - created_at
+
+Relationships:
+  - Content.uploaded_by → User (teacher)
+  - Content.approved_by → User (principal)
+
+Design decisions:
+  - UUID primary keys for security (no sequential ID guessing)
+  - Nullable start/end times (content inactive until teacher schedules it)
+  - Status enum enforces valid lifecycle states
+  - Indexes on uploaded_by, status for query performance
+
+7. FOLDER STRUCTURE
+--------------------
+content-broadcasting-system/
+├── src/
+│   ├── config/
+│   │   ├── database.js       # Supabase PostgreSQL connection
+│   │   ├── s3.js             # AWS S3 + multer configuration
+│   │   └── jwt.js            # JWT secret and expiry config
+│   ├── controllers/
+│   │   ├── authController.js      # register, login, getProfile
+│   │   ├── contentController.js   # upload, getMyContent
+│   │   ├── approvalController.js  # getPending, getAll, approve, reject
+│   │   └── broadcastController.js # getLiveContent (public)
+│   ├── middlewares/
+│   │   ├── auth.js           # JWT verification middleware
+│   │   ├── rbac.js           # Role-based access control
+│   │   └── validators.js     # Input validation (express-validator)
+│   ├── models/
+│   │   ├── User.js           # User model + bcrypt hooks
+│   │   ├── Content.js        # Content model + validations
+│   │   └── index.js          # Model associations
+│   ├── routes/
+│   │   ├── authRoutes.js          # /api/auth/*
+│   │   ├── contentRoutes.js       # /api/content/*
+│   │   ├── approvalRoutes.js      # /api/approval/*
+│   │   └── broadcastRoutes.js     # /api/broadcast/*
+│   ├── services/
+│   │   └── schedulingService.js   # Rotation logic
+│   └── app.js                # Express app setup
+├── scripts/
+│   └── seed.js               # Seed initial users
+├── .env                      # Environment variables
+├── server.js                 # Entry point
+└── architecture-notes.txt    # This file
+and some connection test Files
+
+8. MIDDLEWARE USAGE
+--------------------
+- cors: allows cross-origin requests (students on different domains)
+- express.json: parses JSON request bodies
+- express.urlencoded: parses form data
+- authenticate: verifies JWT on protected routes
+- authorize(role): checks user role matches required role
+- multer + multer-s3: handles file upload to S3
+- validators: validates input fields before hitting controller
+- Global error handler: catches unhandled errors, returns consistent format
+- 404 handler: catches undefined routes
+
+9. SCALABILITY APPROACH
+------------------------
+Current implementation handles real-world load well. For scale:
+
+Caching (Redis - Bonus):
+  - Cache /api/broadcast/live/:teacherId responses
+  - TTL = shortest rotation_duration among active content
+  - Invalidate on approval or content update
+  - Reduces DB queries for high-traffic public endpoint
+
+Rate Limiting:
+  - Apply express-rate-limit on public broadcast endpoint
+  - Prevents abuse from students hitting endpoint repeatedly
+  - Example: 100 requests per minute per IP
+
+Queue System (Future):
+  - Use Bull/BullMQ for async file processing
+  - Virus scanning before S3 upload
+  - Image compression/optimization pipeline
+
+Database:
+  - Connection pooling via Supabase Session Pooler (already implemented)
+  - Add indexes on status, uploaded_by, start_time, end_time
+  - Read replicas for broadcast endpoint under heavy load
+
+CDN:
+  - S3 + CloudFront for faster image delivery globally
+  - Reduces S3 direct access costs
