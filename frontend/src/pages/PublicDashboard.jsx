@@ -13,7 +13,7 @@ export default function PublicDashboard() {
 
   const fetchAllContent = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/api/broadcast/all')
+      const res = await axios.get('/api/broadcast/all')
       setData(res.data.data)
       setLastUpdated(new Date())
     } catch (err) {

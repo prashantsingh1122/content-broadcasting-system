@@ -17,7 +17,7 @@ export default function StudentView() {
 
   const fetchLiveContent = async () => {
     try {
-      const res = await axios.get(`http://localhost:3000/api/broadcast/live/${teacherId}`)
+      const res = await axios.get(`/api/broadcast/live/${teacherId}`)
       setData(res.data.data)
       setLastUpdated(new Date())
       setError('')
@@ -31,7 +31,7 @@ export default function StudentView() {
   const fetchAllTeacherContent = async () => {
     setAllLoading(true)
     try {
-      const res = await axios.get(`http://localhost:3000/api/broadcast/approved`)
+      const res = await axios.get(`/api/broadcast/approved`)
       const teacherContent = res.data.data.filter(c => c.uploaded_by === teacherId)
       setAllContent(teacherContent)
     } catch (err) {
