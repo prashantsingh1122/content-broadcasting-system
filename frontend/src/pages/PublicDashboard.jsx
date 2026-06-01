@@ -69,6 +69,7 @@ export default function PublicDashboard() {
             >
               Login
             </button>
+            <button onClick={() => navigate('/')}>← Home</button>
           </div>
         </div>
       </nav>
