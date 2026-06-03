@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 const contentRoutes = require('./routes/contentRoutes'); // ADD THIS
 const approvalRoutes = require('./routes/approvalRoutes'); // ADD THIS
 const broadcastRoutes = require('./routes/broadcastRoutes'); // add at top
+const pollRoutes = require('./routes/pollRoutes');
 
 const app = express();
 
@@ -29,6 +30,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/content', contentRoutes); // ADD THIS
 app.use('/api/approval', approvalRoutes);
 app.use('/api/broadcast', broadcastRoutes); 
+app.use('/api/polls', pollRoutes);
+
 
 app.use((req, res) => {
   res.status(404).json({ 
