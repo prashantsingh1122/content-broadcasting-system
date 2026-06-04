@@ -19,7 +19,7 @@ This Content Broadcasting System is an educational platform backend and frontend
 - Scheduled broadcasts and live feed per teacher/subject.
 - Real-time polls and live results with persistent votes.
 - Input validation, rate limiting, and basic security hardening.
-- DB migrations/seeding scripts and sample test utilities.
+- DB seeding utilities and deployment-ready workflow.
 
 **Architecture Diagram**
 
@@ -64,21 +64,21 @@ See `src/models` for Sequelize model definitions.
 **API Documentation (selected endpoints)**
 
 - Authentication
-	- `POST /api/auth/register` — body: `{name,email,password,role}`
-	- `POST /api/auth/login` — body: `{email,password}` -> returns `{ token }`
+  - `POST /api/auth/register` — body: `{name,email,password,role}`
+  - `POST /api/auth/login` — body: `{email,password}` -> returns `{ token }`
 
 - Content
-	- `POST /api/content/upload` (teacher) — multipart/form-data: `file`, `title`, `subject`, `scheduledAt`
-	- `GET /api/content/my-content` (teacher)
-	- `GET /api/content/public` (public feed)
+  - `POST /api/content/upload` (teacher) — multipart/form-data: `file`, `title`, `subject`, `scheduledAt`
+  - `GET /api/content/my-content` (teacher)
+  - `GET /api/content/public` (public feed)
 
 - Approval (principal)
-	- `GET /api/approval/pending` — list pending content
-	- `PATCH /api/approval/:id/approve` — body: `{notes}`
+  - `GET /api/approval/pending` — list pending content
+  - `PATCH /api/approval/:id/approve` — body: `{notes}`
 
 - Polls
-	- `POST /api/polls` — create poll
-	- `POST /api/polls/:id/vote` — cast vote (requires auth)
+  - `POST /api/polls` — create poll
+  - `POST /api/polls/:id/vote` — cast vote (requires auth)
 
 Authentication: send `Authorization: Bearer <token>` header for protected routes.
 
@@ -117,11 +117,48 @@ Key environment variables
 
 **Screenshots**
 
-- Add screenshots to `/readme_files/` and reference them here. Example:
+The repo includes screenshot assets in `readme_files/` for demo reference.
 
-![Landing Page](readme_files/landing-page.png)
+- Landing page: `readme_files/Landing_Page.png`
+- Login page: `readme_files/Login_with_demo_id.png`
+- Principal dashboard: `readme_files/Principal's_Dashboard.png`
+- Student view: `readme_files/Student's_View.png`
+- Teacher poll & content view: `readme_files/Teacher's_Poll&Contents.png`
 
-If you want, I can capture sample screenshots and add them to `readme_files/`.
+![Landing Page](readme_files/Landing_Page.png)
+
+![Teacher Poll & Contents](readme_files/Teacher's_Poll&Contents.png)
+
+**Live Demo Links**
+
+- Health check: https://content-broadcasting-system-h4uo.onrender.com/health
+- Production app: add the public app URL here once deployed.
+
+**Swagger / OpenAPI Docs**
+
+- This repo currently does not include generated Swagger/OpenAPI docs.
+- Recommended next step: add `swagger-jsdoc` and `swagger-ui-express` or a static `swagger.yaml` file and expose `/api-docs`.
+- Once added, update this section with the actual Swagger UI URL and spec location.
+
+**Automated Tests**
+
+- Current repo test utilities:
+  - `test-auth.js`
+  - `test-db.js`
+  - `test-s3.js`
+  - `test-supabase.js`
+- These are manual verification scripts and not an automated test suite.
+- Recommended next step: add a test framework such as Jest or Mocha and write 10–15 unit/integration tests for auth, content upload, approval, broadcasting, and poll flows.
+
+**CI / CD**
+
+- The repository contains a GitHub Actions workflow: `.github/workflows/deploy.yml`
+- Current deployment flow:
+  1. Push to `main`
+  2. GitHub Action checks out the repo
+  3. SSH deploy to EC2 via `appleboy/ssh-action`
+  4. Runs `docker compose up -d --build`
+- Notes: CI is configured for deployment; add test and lint steps to the workflow to enforce quality before deploy.
 
 **Demo Credentials**
 
@@ -133,19 +170,20 @@ These are seeded in `scripts/seed.js` (adjust passwords and env as needed).
 
 **Testing & Utilities**
 
-- Manual test scripts: `test-auth.js`, `test-db.js`, `test-s3.js`, `test-supabase.js`.
-- Run linter: `cd frontend && npm run lint` and `npm run lint` in root where configured.
+- Manual test scripts are available in the repo.
+- Run frontend linting via `cd frontend && npm run lint`.
 
-**Notes for Recruiters / Technical Reviewers**
+**What to do next**
 
-- Architecture supports horizontal scaling: stateless API + Redis for pub/sub and session caching.
-- Storage separation via S3 keeps the app lightweight and cost-efficient for media.
-- Areas for improvement: add automated tests (unit/integration), CI for migrations, and granular RBAC rules.
+1. Add real Swagger/OpenAPI documentation and expose `/api-docs`.
+2. Add a test runner (Jest/Mocha) and write 10–15 automated tests.
+3. Add the public app URL to the Live Demo Links section.
+4. Add a CI step for tests and linting before `docker compose up` in `.github/workflows/deploy.yml`.
 
 ---
 
-If you'd like, I can:
-- Add screenshots into `readme_files/` and embed them.
-- Generate OpenAPI (Swagger) docs for all routes.
-- Produce a short demo video and attach it to this repo.
+If you'd like, I can also help implement:
+- Swagger UI and OpenAPI spec generation.
+- A Jest test suite with 10+ automated tests.
+- A CI workflow update that runs lint and tests before deployment.
 
