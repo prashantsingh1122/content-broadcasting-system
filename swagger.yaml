@@ -2,18 +2,39 @@ openapi: 3.0.3
 info:
   title: Content Broadcasting System API
   version: 1.0.0
+  contact:
+    name: Prashant Singh
+    email: your@email.com
   description: |
+    JWT protected API.
+
+    Click Authorize and enter:
+    Bearer <token>
+
     API documentation for the Content Broadcasting System. This backend supports user authentication, content upload and approval, real-time polling, and live broadcast retrieval.
 servers:
   - url: http://localhost:3000
     description: Local development server
   - url: https://content-broadcasting-system-h4uo.onrender.com
-    description: Render deployment health check
+    description: Render deployment server
   - url: http://65.0.30.203:3000
-    description: EC2 deployment placeholder
+    description: EC2 deployment server
+tags:
+  - name: Authentication
+    description: User registration and login flows
+  - name: Content
+    description: Teacher content upload and retrieval
+  - name: Approvals
+    description: Principal approval workflows
+  - name: Polls
+    description: Poll creation, voting, and results
+  - name: Broadcasting
+    description: Live broadcast and content retrieval
 paths:
   /health:
     get:
+      tags:
+        - Broadcasting
       summary: Health check
       description: Returns basic server health information.
       responses:
@@ -25,6 +46,8 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
   /api/auth/register:
     post:
+      tags:
+        - Authentication
       summary: Register a new user
       requestBody:
         required: true
@@ -47,6 +70,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/auth/login:
     post:
+      tags:
+        - Authentication
       summary: Login user
       requestBody:
         required: true
@@ -69,6 +94,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/auth/me:
     get:
+      tags:
+        - Authentication
       summary: Get current user profile
       security:
         - bearerAuth: []
@@ -87,6 +114,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/content/upload:
     post:
+      tags:
+        - Content
       summary: Upload content
       description: Teacher uploads content file and metadata for approval.
       security:
@@ -100,17 +129,22 @@ paths:
               properties:
                 title:
                   type: string
+                  example: Classroom Lesson Plan
                 description:
                   type: string
+                  example: A video tutorial for biology class.
                 subject:
                   type: string
                   enum: [maths, science, english, history]
+                  example: science
                 start_time:
                   type: string
                   format: date-time
+                  example: 2026-07-01T08:00:00Z
                 end_time:
                   type: string
                   format: date-time
+                  example: 2026-07-01T10:00:00Z
                 rotation_duration:
                   type: integer
                   example: 5
@@ -133,6 +167,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/content/my-content:
     get:
+      tags:
+        - Content
       summary: Get teacher's uploaded content
       security:
         - bearerAuth: []
@@ -151,6 +187,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/approval/pending:
     get:
+      tags:
+        - Approvals
       summary: Get pending content for approval
       security:
         - bearerAuth: []
@@ -163,6 +201,8 @@ paths:
                 $ref: '#/components/schemas/ContentListResponse'
   /api/approval/all:
     get:
+      tags:
+        - Approvals
       summary: Get all content
       security:
         - bearerAuth: []
@@ -175,6 +215,8 @@ paths:
                 $ref: '#/components/schemas/ContentListResponse'
   /api/approval/{id}/approve:
     patch:
+      tags:
+        - Approvals
       summary: Approve content
       security:
         - bearerAuth: []
@@ -199,6 +241,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/approval/{id}/reject:
     patch:
+      tags:
+        - Approvals
       summary: Reject content
       security:
         - bearerAuth: []
@@ -217,6 +261,7 @@ paths:
               properties:
                 reason:
                   type: string
+                  example: Incorrect content or schedule conflict
               required: [reason]
       responses:
         '200':
@@ -239,6 +284,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/polls/active:
     get:
+      tags:
+        - Polls
       summary: Get active public polls
       responses:
         '200':
@@ -249,6 +296,8 @@ paths:
                 $ref: '#/components/schemas/PollListResponse'
   /api/polls/{id}/vote:
     post:
+      tags:
+        - Polls
       summary: Vote on a poll
       parameters:
         - name: id
@@ -265,8 +314,10 @@ paths:
               properties:
                 option_index:
                   type: integer
+                  example: 1
                 voter_session:
                   type: string
+                  example: session-12345
               required: [option_index, voter_session]
       responses:
         '200':
@@ -289,6 +340,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/polls:
     post:
+      tags:
+        - Polls
       summary: Create a new poll
       security:
         - bearerAuth: []
@@ -313,6 +366,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/polls/my-polls:
     get:
+      tags:
+        - Polls
       summary: Get polls created by the authenticated teacher
       security:
         - bearerAuth: []
@@ -325,6 +380,8 @@ paths:
                 $ref: '#/components/schemas/PollListResponse'
   /api/polls/{id}/toggle:
     patch:
+      tags:
+        - Polls
       summary: Toggle a poll active state
       security:
         - bearerAuth: []
@@ -349,6 +406,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/polls/{id}:
     delete:
+      tags:
+        - Polls
       summary: Delete a poll
       security:
         - bearerAuth: []
@@ -373,6 +432,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/broadcast/live/{teacherId}:
     get:
+      tags:
+        - Broadcasting
       summary: Get live content for a specific teacher
       parameters:
         - name: teacherId
@@ -395,6 +456,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/broadcast/all:
     get:
+      tags:
+        - Broadcasting
       summary: Get live content from all teachers
       responses:
         '200':
@@ -425,14 +488,18 @@ components:
       properties:
         name:
           type: string
+          example: Prashant Singh
         email:
           type: string
           format: email
+          example: principal@example.com
         password:
           type: string
+          example: Password123!
         role:
           type: string
           enum: [principal, teacher]
+          example: principal
       required: [name, email, password, role]
     RegisterResponse:
       type: object
@@ -447,8 +514,10 @@ components:
         email:
           type: string
           format: email
+          example: principal@example.com
         password:
           type: string
+          example: Password123!
       required: [email, password]
     LoginResponse:
       type: object
@@ -457,6 +526,7 @@ components:
           type: string
         token:
           type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
         user:
           $ref: '#/components/schemas/UserSummary'
     ProfileResponse:
@@ -530,13 +600,18 @@ components:
       properties:
         question:
           type: string
+          example: Which topic should we cover next?
         options:
           type: array
           items:
             type: string
+          example:
+            - Algebra
+            - Geometry
         end_time:
           type: string
           format: date-time
+          example: 2026-08-01T18:00:00Z
       required: [question, options]
     CreatePollResponse:
       type: object
@@ -630,12 +705,17 @@ components:
       properties:
         id:
           type: integer
+          example: 1
         name:
           type: string
+          example: Prashant Singh
         email:
           type: string
+          format: email
+          example: principal@example.com
         role:
           type: string
+          example: principal
     UserProfile:
       allOf:
         - $ref: '#/components/schemas/UserSummary'
@@ -644,137 +724,190 @@ components:
             created_at:
               type: string
               format: date-time
+              example: 2026-06-04T12:00:00Z
     ContentSummary:
       type: object
       properties:
         id:
           type: integer
+          example: 100
         title:
           type: string
+          example: Classroom Lesson Plan
         subject:
           type: string
+          example: science
         file_url:
           type: string
+          example: https://example-bucket.s3.amazonaws.com/lesson.mp4
         status:
           type: string
+          example: pending
         start_time:
           type: string
           format: date-time
+          example: 2026-07-01T08:00:00Z
         end_time:
           type: string
           format: date-time
+          example: 2026-07-01T10:00:00Z
         rotation_duration:
           type: integer
+          example: 5
         created_at:
           type: string
           format: date-time
+          example: 2026-06-04T12:00:00Z
     ContentDetail:
       type: object
       properties:
         id:
           type: integer
+          example: 100
         title:
           type: string
+          example: Classroom Lesson Plan
         description:
           type: string
+          example: A video tutorial for biology class.
         subject:
           type: string
+          example: science
         file_url:
           type: string
+          example: https://example-bucket.s3.amazonaws.com/lesson.mp4
         file_type:
           type: string
+          example: video/mp4
         file_size:
           type: integer
+          example: 10485760
         start_time:
           type: string
           format: date-time
+          example: 2026-07-01T08:00:00Z
         end_time:
           type: string
           format: date-time
+          example: 2026-07-01T10:00:00Z
         rotation_duration:
           type: integer
+          example: 5
         status:
           type: string
+          example: approved
         uploaded_by:
           type: integer
+          example: 2
         approved_by:
           type: integer
+          example: 1
         approved_at:
           type: string
           format: date-time
+          example: 2026-07-01T11:00:00Z
         rejection_reason:
           type: string
+          example: Content does not meet guidelines
         created_at:
           type: string
           format: date-time
+          example: 2026-06-04T12:00:00Z
     PollDetail:
       type: object
       properties:
         id:
           type: integer
+          example: 10
         question:
           type: string
+          example: Which topic should we cover next?
         options:
           type: array
           items:
             type: string
+          example:
+            - Algebra
+            - Geometry
         teacher_id:
           type: integer
+          example: 2
         is_active:
           type: boolean
+          example: true
         end_time:
           type: string
           format: date-time
+          example: 2026-08-01T18:00:00Z
         created_at:
           type: string
           format: date-time
+          example: 2026-06-04T12:00:00Z
         updated_at:
           type: string
           format: date-time
+          example: 2026-06-04T12:30:00Z
         vote_counts:
           type: array
           items:
             $ref: '#/components/schemas/VoteCount'
         total_votes:
           type: integer
+          example: 24
     VoteCount:
       type: object
       properties:
         option:
           type: string
+          example: Algebra
         votes:
           type: integer
+          example: 12
     ActiveContent:
       type: object
       properties:
         id:
           type: integer
+          example: 100
         title:
           type: string
+          example: Classroom Lesson Plan
         description:
           type: string
+          example: A video tutorial for biology class.
         subject:
           type: string
+          example: science
         file_url:
           type: string
+          example: https://example-bucket.s3.amazonaws.com/lesson.mp4
         file_type:
           type: string
+          example: video/mp4
         file_size:
           type: integer
+          example: 10485760
         start_time:
           type: string
           format: date-time
+          example: 2026-07-01T08:00:00Z
         end_time:
           type: string
           format: date-time
+          example: 2026-07-01T10:00:00Z
         rotation_duration:
           type: integer
+          example: 5
         status:
           type: string
+          example: approved
         uploaded_by:
           type: integer
+          example: 2
         approved_by:
           type: integer
+          example: 1
         approved_at:
           type: string
           format: date-time
+          example: 2026-07-01T11:00:00Z

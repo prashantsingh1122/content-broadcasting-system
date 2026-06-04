@@ -140,6 +140,16 @@ The repo includes screenshot assets in `readme_files/` for demo reference.
 - Recommended next step: add `swagger-ui-express` or another Swagger UI layer to expose `/api-docs`.
 - Once exposed, update this section with the actual Swagger UI URL and spec location.
 
+**WebSocket Events**
+
+- `teacher_content_uploaded`
+- `content_approved`
+- `poll_created`
+- `poll_vote_received`
+- `poll_results_updated`
+
+These events are part of the real-time Socket.IO integration and make the system stand out for live classroom updates.
+
 **Automated Tests**
 
 - Current repo test utilities:
