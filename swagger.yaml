@@ -1,0 +1,780 @@
+openapi: 3.0.3
+info:
+  title: Content Broadcasting System API
+  version: 1.0.0
+  description: |
+    API documentation for the Content Broadcasting System. This backend supports user authentication, content upload and approval, real-time polling, and live broadcast retrieval.
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://content-broadcasting-system-h4uo.onrender.com
+    description: Render deployment health check
+  - url: http://65.0.30.203:3000
+    description: EC2 deployment placeholder
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns basic server health information.
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/login:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/me:
+    get:
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/content/upload:
+    post:
+      summary: Upload content
+      description: Teacher uploads content file and metadata for approval.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                subject:
+                  type: string
+                  enum: [maths, science, english, history]
+                start_time:
+                  type: string
+                  format: date-time
+                end_time:
+                  type: string
+                  format: date-time
+                rotation_duration:
+                  type: integer
+                  example: 5
+                file:
+                  type: string
+                  format: binary
+              required: [title, subject, file]
+      responses:
+        '201':
+          description: Content uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadContentResponse'
+        '400':
+          description: Validation or upload error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/content/my-content:
+    get:
+      summary: Get teacher's uploaded content
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Content list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyContentResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/approval/pending:
+    get:
+      summary: Get pending content for approval
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending content returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentListResponse'
+  /api/approval/all:
+    get:
+      summary: Get all content
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All content returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentListResponse'
+  /api/approval/{id}/approve:
+    patch:
+      summary: Approve content
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Content approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApproveRejectResponse'
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/approval/{id}/reject:
+    patch:
+      summary: Reject content
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+              required: [reason]
+      responses:
+        '200':
+          description: Content rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApproveRejectResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/polls/active:
+    get:
+      summary: Get active public polls
+      responses:
+        '200':
+          description: Active polls returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollListResponse'
+  /api/polls/{id}/vote:
+    post:
+      summary: Vote on a poll
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                option_index:
+                  type: integer
+                voter_session:
+                  type: string
+              required: [option_index, voter_session]
+      responses:
+        '200':
+          description: Vote recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteResponse'
+        '400':
+          description: Validation or voting error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Poll not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/polls:
+    post:
+      summary: Create a new poll
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePollRequest'
+      responses:
+        '201':
+          description: Poll created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePollResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/polls/my-polls:
+    get:
+      summary: Get polls created by the authenticated teacher
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Teacher polls returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollListResponse'
+  /api/polls/{id}/toggle:
+    patch:
+      summary: Toggle a poll active state
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Poll toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TogglePollResponse'
+        '404':
+          description: Poll not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/polls/{id}:
+    delete:
+      summary: Delete a poll
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Poll deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletePollResponse'
+        '404':
+          description: Poll not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/broadcast/live/{teacherId}:
+    get:
+      summary: Get live content for a specific teacher
+      parameters:
+        - name: teacherId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Live content returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveContentResponse'
+        '404':
+          description: Teacher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/broadcast/all:
+    get:
+      summary: Get live content from all teachers
+      responses:
+        '200':
+          description: All live content returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllLiveContentResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        role:
+          type: string
+          enum: [principal, teacher]
+      required: [name, email, password, role]
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserSummary'
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required: [email, password]
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserSummary'
+    ProfileResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserProfile'
+    UploadContentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            content:
+              $ref: '#/components/schemas/ContentSummary'
+    MyContentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        count:
+          type: integer
+        data:
+          type: object
+          properties:
+            contents:
+              type: array
+              items:
+                $ref: '#/components/schemas/ContentSummary'
+    ContentListResponse:
+      type: object
+      properties:
+        contents:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentDetail'
+    ApproveRejectResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            content:
+              $ref: '#/components/schemas/ContentDetail'
+    VoteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            vote_counts:
+              type: array
+              items:
+                $ref: '#/components/schemas/VoteCount'
+            total_votes:
+              type: integer
+    CreatePollRequest:
+      type: object
+      properties:
+        question:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        end_time:
+          type: string
+          format: date-time
+      required: [question, options]
+    CreatePollResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            poll:
+              $ref: '#/components/schemas/PollDetail'
+    PollListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        count:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PollDetail'
+    TogglePollResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            poll:
+              $ref: '#/components/schemas/PollDetail'
+    DeletePollResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+    LiveContentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            teacher:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+            content:
+              $ref: '#/components/schemas/ActiveContent'
+    AllLiveContentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        total:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              teacher:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+              content:
+                $ref: '#/components/schemas/ActiveContent'
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        success:
+          type: boolean
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+    UserProfile:
+      allOf:
+        - $ref: '#/components/schemas/UserSummary'
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+    ContentSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subject:
+          type: string
+        file_url:
+          type: string
+        status:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        rotation_duration:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    ContentDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        subject:
+          type: string
+        file_url:
+          type: string
+        file_type:
+          type: string
+        file_size:
+          type: integer
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        rotation_duration:
+          type: integer
+        status:
+          type: string
+        uploaded_by:
+          type: integer
+        approved_by:
+          type: integer
+        approved_at:
+          type: string
+          format: date-time
+        rejection_reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    PollDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        question:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        teacher_id:
+          type: integer
+        is_active:
+          type: boolean
+        end_time:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        vote_counts:
+          type: array
+          items:
+            $ref: '#/components/schemas/VoteCount'
+        total_votes:
+          type: integer
+    VoteCount:
+      type: object
+      properties:
+        option:
+          type: string
+        votes:
+          type: integer
+    ActiveContent:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        subject:
+          type: string
+        file_url:
+          type: string
+        file_type:
+          type: string
+        file_size:
+          type: integer
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        rotation_duration:
+          type: integer
+        status:
+          type: string
+        uploaded_by:
+          type: integer
+        approved_by:
+          type: integer
+        approved_at:
+          type: string
+          format: date-time

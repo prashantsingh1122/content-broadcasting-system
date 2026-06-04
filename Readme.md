@@ -136,9 +136,9 @@ The repo includes screenshot assets in `readme_files/` for demo reference.
 
 **Swagger / OpenAPI Docs**
 
-- This repo currently does not include generated Swagger/OpenAPI docs.
-- Recommended next step: add `swagger-jsdoc` and `swagger-ui-express` or a static `swagger.yaml` file and expose `/api-docs`.
-- Once added, update this section with the actual Swagger UI URL and spec location.
+- This repo includes a static `swagger.yaml` file at the repository root.
+- Recommended next step: add `swagger-ui-express` or another Swagger UI layer to expose `/api-docs`.
+- Once exposed, update this section with the actual Swagger UI URL and spec location.
 
 **Automated Tests**
 
