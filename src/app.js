@@ -11,17 +11,20 @@ const approvalRoutes = require('./routes/approvalRoutes'); // ADD THIS
 const broadcastRoutes = require('./routes/broadcastRoutes'); // add at top
 const pollRoutes = require('./routes/pollRoutes');
 
-const app = express();
-
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'https://content-broadcasting-system-three.vercel.app/', // add after deploying
-    'http://65.0.30.203'
+    'https://content-broadcasting-system-three.vercel.app',
+    'http://65.0.30.203',
     'https://content-broadcasting-system-h4uo.onrender.com'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }))
+
+// Add this right after cors
+app.options('*', cors())
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
