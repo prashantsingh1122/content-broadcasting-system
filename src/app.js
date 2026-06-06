@@ -6,12 +6,14 @@ const YAML = require('yamljs');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
-const contentRoutes = require('./routes/contentRoutes'); // ADD THIS
-const approvalRoutes = require('./routes/approvalRoutes'); // ADD THIS
-const broadcastRoutes = require('./routes/broadcastRoutes'); // add at top
+const contentRoutes = require('./routes/contentRoutes');
+const approvalRoutes = require('./routes/approvalRoutes');
+const broadcastRoutes = require('./routes/broadcastRoutes');
 const pollRoutes = require('./routes/pollRoutes');
 
-app.use(cors({
+const app = express();
+
+const corsOptions = {
   origin: [
     'http://localhost:5173',
     'https://content-broadcasting-system-three.vercel.app',
@@ -21,10 +23,10 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}))
+}
 
-// Add this right after cors
-app.options('*', cors())
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -38,12 +40,11 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
-app.use('/api/content', contentRoutes); // ADD THIS
+app.use('/api/content', contentRoutes);
 app.use('/api/approval', approvalRoutes);
-app.use('/api/broadcast', broadcastRoutes); 
+app.use('/api/broadcast', broadcastRoutes);
 app.use('/api/polls', pollRoutes);
 
-// Swagger UI (serve static swagger.yaml from repo root)
 try {
   const swaggerPath = path.join(__dirname, '..', 'swagger.yaml');
   const swaggerDocument = YAML.load(swaggerPath);
@@ -52,15 +53,12 @@ try {
   console.warn('Swagger UI not mounted:', err.message);
 }
 
-
 app.use((req, res) => {
   res.status(404).json({ 
     success: false,
     error: 'Route not found' 
   });
 });
-
-
 
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
