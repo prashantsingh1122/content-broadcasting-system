@@ -4,6 +4,8 @@ const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 require('dotenv').config();
+//Rate Limiting
+const {apiLimiter, authLimiter, broadcastLimiter} = require('./middlewares/rateLimiter');
 
 const authRoutes = require('./routes/authRoutes');
 const contentRoutes = require('./routes/contentRoutes');
