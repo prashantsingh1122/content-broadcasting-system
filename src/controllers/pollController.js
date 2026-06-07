@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const { Poll, Vote, User } = require('../models');
 
 const buildPollWithVotes = async (poll) => {
@@ -7,17 +8,22 @@ const buildPollWithVotes = async (poll) => {
     votes: votes.filter(v => v.option_index === i).length
   }));
 
+  const timeRemaining = poll.end_time
+    ? Math.max(0, Math.floor((new Date(poll.end_time) - new Date()) / 1000))
+    : null
+
   return {
     ...poll.toJSON(),
     vote_counts: voteCounts,
-    total_votes: votes.length
+    total_votes: votes.length,
+    time_remaining: timeRemaining
   };
 };
 
 // POST /api/polls - Teacher creates a poll
 exports.createPoll = async (req, res) => {
   try {
-    const { question, options, end_time } = req.body;
+    const { question, options, end_time, duration_minutes } = req.body;
 
     if (!question || !options || !Array.isArray(options) || options.length < 2) {
       return res.status(400).json({
@@ -33,30 +39,44 @@ exports.createPoll = async (req, res) => {
       });
     }
 
+    // Calculate end_time from duration_minutes if provided
+    let pollEndTime = end_time ? new Date(end_time) : null
+    if (duration_minutes) {
+      pollEndTime = new Date(Date.now() + duration_minutes * 60 * 1000)
+    }
+
+    // Validate end_time is in future
+    if (pollEndTime && pollEndTime <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        error: 'End time must be in the future'
+      })
+    }
+
     const poll = await Poll.create({
       question,
       options,
       teacher_id: req.user.id,
-      end_time: end_time || null,
+      end_time: pollEndTime,
       is_active: true
     });
 
+    const timeRemaining = pollEndTime
+      ? Math.floor((pollEndTime - new Date()) / 1000)
+      : null
+
     const pollWithVotes = {
       ...poll.toJSON(),
-      teacher: {
-        id: req.user.id,
-        name: req.user.name
-      },
+      teacher: { id: req.user.id, name: req.user.name },
       vote_counts: poll.options.map(option => ({ option, votes: 0 })),
-      total_votes: 0
+      total_votes: 0,
+      time_remaining: timeRemaining
     };
 
     // Notify all students via WebSocket
     const io = req.app.get('io')
     if (io) {
-      io.to('public_dashboard').emit('new_poll', {
-        poll: pollWithVotes
-      })
+      io.to('public_dashboard').emit('new_poll', { poll: pollWithVotes })
     }
 
     res.status(201).json({
@@ -142,37 +162,51 @@ exports.deletePoll = async (req, res) => {
 // GET /api/polls/active - Public: get all active polls
 exports.getActivePolls = async (req, res) => {
   try {
+    const now = new Date()
     const polls = await Poll.findAll({
       where: {
-        is_active: true
+        is_active: true,
+        [Op.or]: [
+          { end_time: null },
+          { end_time: { [Op.gt]: now } }
+        ]
       },
-      include: [
-        {
-          model: User,
-          as: 'teacher',
-          attributes: ['id', 'name']
-        }
-      ],
+      include: [{
+        model: User,
+        as: 'teacher',
+        attributes: ['id', 'name']
+      }],
       order: [['created_at', 'DESC']]
-    });
+    })
 
-    const visiblePolls = polls.filter(poll => {
-      return !poll.end_time || new Date(poll.end_time) > new Date();
-    });
+    const pollsWithVotes = await Promise.all(polls.map(async (poll) => {
+      const votes = await Vote.findAll({ where: { poll_id: poll.id } })
+      const voteCounts = poll.options.map((opt, i) => ({
+        option: opt,
+        votes: votes.filter(v => v.option_index === i).length
+      }))
 
-    // Get vote counts
-    const pollsWithVotes = await Promise.all(visiblePolls.map(buildPollWithVotes));
+      // Calculate time remaining in seconds
+      const timeRemaining = poll.end_time
+        ? Math.max(0, Math.floor((new Date(poll.end_time) - now) / 1000))
+        : null
+
+      return {
+        ...poll.toJSON(),
+        vote_counts: voteCounts,
+        total_votes: votes.length,
+        time_remaining: timeRemaining  // seconds left
+      }
+    }))
 
     res.json({
       success: true,
       data: pollsWithVotes
-    });
+    })
   } catch (error) {
-    console.error('Get active polls error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error.message })
   }
-};
-
+}
 // POST /api/polls/:id/vote - Public: student votes
 exports.vote = async (req, res) => {
   try {
@@ -190,11 +224,16 @@ exports.vote = async (req, res) => {
     if (!poll) return res.status(404).json({ success: false, error: 'Poll not found' });
     if (!poll.is_active) return res.status(400).json({ success: false, error: 'Poll is not active' });
 
+    // Check if poll expired
+    if (poll.end_time && new Date(poll.end_time) < new Date()) {
+      await poll.update({ is_active: false })
+      return res.status(400).json({ success: false, error: 'Poll has expired' })
+    }
+
     if (option_index < 0 || option_index >= poll.options.length) {
       return res.status(400).json({ success: false, error: 'Invalid option' });
     }
 
-    // Check if already voted
     const existing = await Vote.findOne({ where: { poll_id: id, voter_session } });
     if (existing) {
       return res.status(400).json({ success: false, error: 'Already voted' });
@@ -202,14 +241,12 @@ exports.vote = async (req, res) => {
 
     await Vote.create({ poll_id: id, option_index, voter_session });
 
-    // Get updated vote counts
     const votes = await Vote.findAll({ where: { poll_id: id } });
     const voteCounts = poll.options.map((opt, i) => ({
       option: opt,
       votes: votes.filter(v => v.option_index === i).length
     }));
 
-    // Broadcast updated results via WebSocket
     const io = req.app.get('io')
     if (io) {
       io.to('public_dashboard').emit('vote_updated', {
@@ -227,10 +264,7 @@ exports.vote = async (req, res) => {
     res.json({
       success: true,
       message: 'Vote recorded!',
-      data: {
-        vote_counts: voteCounts,
-        total_votes: votes.length
-      }
+      data: { vote_counts: voteCounts, total_votes: votes.length }
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

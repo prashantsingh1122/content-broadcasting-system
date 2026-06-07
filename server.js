@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const sequelize = require('./src/config/database');
 const app = require('./src/app');
+const { startPollScheduler } = require('./src/services/pollScheduler')
 
 const server = http.createServer(app);
 
@@ -57,6 +58,9 @@ const startServer = async () => {
       console.log(`   POST http://localhost:${PORT}/api/auth/register`);
       console.log(`   POST http://localhost:${PORT}/api/auth/login`);
       console.log(`   GET  http://localhost:${PORT}/api/auth/me`);
+
+      // Start poll scheduler after server is up
+      startPollScheduler(io)
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
