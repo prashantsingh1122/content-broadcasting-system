@@ -1,4 +1,5 @@
 const Content = require('../models/Content');
+const { deleteCache } = require('../config/redis')
 
 exports.getPendingContent = async (req, res) => {
   try {
@@ -36,6 +37,10 @@ exports.approveContent = async (req, res) => {
     content.approved_by = req.user.id;
     content.approved_at = new Date();
     await content.save();
+
+      // Invalidate cache
+    await deleteCache('broadcast:all')
+    await deleteCache(`broadcast:teacher:${content.uploaded_by}`)
 
     // 🔔 Emit to teacher's room and public dashboard
     const io = req.app.get('io');

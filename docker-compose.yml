@@ -20,6 +20,9 @@ services:
       - AWS_REGION=${AWS_REGION}
       - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - redis
     networks:
       - cbs-network
 
