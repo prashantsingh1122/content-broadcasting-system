@@ -70,6 +70,8 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showContactCard, setShowContactCard] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -99,6 +101,32 @@ export default function Login() {
   const fillLogin = (email) => {
     setFormData({ email, password: 'password123' })
     setError('')
+  }
+
+  const ADMIN_EMAIL = 'prashantsingh3517@gmail.com'
+  const GMAIL_COMPOSE_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(ADMIN_EMAIL)}`
+  const ADMIN_PHONE = '+91 9559403517'
+
+  const handleCopyPhone = async () => {
+    try {
+      await navigator.clipboard.writeText(ADMIN_PHONE)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (e) {
+      // fallback for older browsers
+      const el = document.createElement('textarea')
+      el.value = ADMIN_PHONE
+      document.body.appendChild(el)
+      el.select()
+      try {
+        document.execCommand('copy')
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } catch (err) {
+        // ignore
+      }
+      document.body.removeChild(el)
+    }
   }
 
   return (
@@ -271,12 +299,65 @@ export default function Login() {
               </div>
             </div>
 
-            <p className="mt-8 text-center text-xs text-gray-600">
-              Don't have an account?{' '}
-              <button type="button" className="text-gray-300 underline-offset-4 hover:text-gray-600 hover:underline">
-                Contact admin
-              </button>
-            </p>
+            <div className="mt-8 text-center text-xs text-gray-600 relative">
+              <p>
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowContactCard(!showContactCard)}
+                  className="text-gray-300 underline-offset-4 hover:text-gray-600 hover:underline"
+                  aria-expanded={showContactCard}
+                >
+                  Contact admin
+                </button>
+              </p>
+
+              {showContactCard && (
+                <div className="absolute left-1/2 top-full z-20 mt-3 w-[300px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-3 text-left shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-500">Administrator</p>
+                      <p className="mt-1 text-sm font-medium text-black">Support</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowContactCard(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                      aria-label="Close contact card"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 p-2">
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M4 4h16v16H4z" />
+                        <path d="M22 6l-10 7L2 6" />
+                      </svg>
+                      <a href={GMAIL_COMPOSE_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-700 hover:underline">{ADMIN_EMAIL}</a>
+                    </div>
+                    <a href={GMAIL_COMPOSE_URL} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700" title="Send email">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M4 4h16v16H4z" />
+                        <path d="M22 6l-10 7L2 6" />
+                      </svg>
+                    </a>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 p-2">
+                    <div className="text-sm text-gray-700">{ADMIN_PHONE}</div>
+                    <button
+                      type="button"
+                      onClick={handleCopyPhone}
+                      className="ml-2 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </main>
       </div>
