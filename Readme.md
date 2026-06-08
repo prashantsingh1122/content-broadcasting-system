@@ -2,6 +2,23 @@
 
 Professional README — recruiter-focused summary, setup, and docs
 
+**Live Demo Links**
+
+- Health check: https://content-broadcasting-system-h4uo.onrender.com/health
+- Production app: https://content-broadcasting-system-three.vercel.app/
+
+<h2>📸 Screenshots</h2>
+
+<p align="center">
+  <img src="readme_files/Landing_Page.png" width="45%" />
+  <img src="readme_files/Principal_Dashboard.png" width="45%" />
+</p>
+
+<p align="center">
+  <img src="readme_files/Teacher_Dashboard.png" width="45%" />
+  <img src="readme_files/Student_View.png" width="45%" />
+</p>
+
 **Project Overview**
 
 This Content Broadcasting System is an educational platform backend and frontend built to schedule, approve, and broadcast classroom content in real time. It includes role-based workflows (Principal, Teacher, Student), content approval pipelines, scheduled broadcasts, polls, and real-time updates via WebSockets.
@@ -129,10 +146,7 @@ The repo includes screenshot assets in `readme_files/` for demo reference.
 
 ![Teacher Poll & Contents](readme_files/Teacher's_Poll&Contents.png)
 
-**Live Demo Links**
 
-- Health check: https://content-broadcasting-system-h4uo.onrender.com/health
-- Production app: add the public app URL here once deployed.
 
 **Swagger / OpenAPI Docs**
 
