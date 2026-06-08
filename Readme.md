@@ -1,4 +1,4 @@
-# Content Broadcasting System
+# Real-Time-Polling-and-content-broadcasting-system
 
 Professional README — recruiter-focused summary, setup, and docs
 
@@ -239,9 +239,9 @@ These events are part of the real-time Socket.IO integration and make the system
 
 **Demo Credentials**
 
-- Principal: `principal@example.com` / `Password123!`
-- Teacher: `teacher@example.com` / `Password123!`
-- Student: `student@example.com` / `Password123!`
+- Principal: `principal@school.com` / `Password123!`
+- Teacher: `teacher@school.com` / `Password123!`
+- Student: `student@school.com` / `Password123!`
 
 These are seeded in `scripts/seed.js` (adjust passwords and env as needed).
 
