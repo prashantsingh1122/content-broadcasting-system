@@ -148,6 +148,73 @@ The repo includes screenshot assets in `readme_files/` for demo reference.
 - `poll_vote_received`
 - `poll_results_updated`
 
+**Caching & Performance (Redis)**
+
+This project uses Redis for caching and optimizing database queries.
+
+- **Configuration**: `src/config/redis.js`
+- **URL**: Configured via `REDIS_URL` environment variable (defaults to `redis://localhost:6379`)
+- **Fallback**: App gracefully degrades if Redis is unavailable (logs warning and continues)
+
+**Cache API**
+
+```javascript
+const { getClient, getCache, setCache, deleteCache } = require('../config/redis');
+
+// Get cached data
+const cachedData = await getCache('my-key');
+
+// Set cache with TTL (Time To Live in seconds)
+await setCache('my-key', { data: 'value' }, 60); // 60 second TTL
+
+// Delete cache
+await deleteCache('my-key');
+```
+
+**Rate Limiting**
+
+Rate limiting middleware prevents abuse and protects API endpoints from being overwhelmed. Configured in `src/middlewares/rateLimiter.js`.
+
+**Available Limiters**
+
+- **apiLimiter**: General API endpoints
+  - Window: 15 minutes
+  - Max requests: 100 per window
+
+- **authLimiter**: Authentication endpoints (login, register)
+  - Window: 15 minutes
+  - Max requests: 5 per window (strict to prevent brute force)
+
+- **broadcastLimiter**: Real-time broadcast endpoints
+  - Window: 1 minute
+  - Max requests: 60 per window
+
+**Usage in Routes**
+
+```javascript
+const { apiLimiter, authLimiter, broadcastLimiter } = require('../middlewares/rateLimiter');
+
+// Apply to auth routes
+router.post('/login', authLimiter, loginController);
+
+// Apply to general API routes
+router.get('/content', apiLimiter, getContentController);
+
+// Apply to broadcast routes
+router.post('/broadcast', broadcastLimiter, broadcastController);
+```
+
+**Response on Rate Limit**
+
+When a user exceeds the rate limit, they receive a 429 (Too Many Requests) response:
+
+```json
+{
+  "success": false,
+  "error": "Too many requests, please try again after [time period]."
+}
+```
+
 These events are part of the real-time Socket.IO integration and make the system stand out for live classroom updates.
 
 **Automated Tests**
