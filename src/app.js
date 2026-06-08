@@ -15,6 +15,8 @@ const pollRoutes = require('./routes/pollRoutes');
 
 const app = express();
 
+app.set('trust proxy', 1)
+
 const corsOptions = {
   origin: [
     'http://localhost:5173',
